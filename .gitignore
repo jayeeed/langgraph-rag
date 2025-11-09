@@ -1,0 +1,6 @@
+src/__pycache__/
+.env
+.venv
+__pycache__/
+fe
+.vscode

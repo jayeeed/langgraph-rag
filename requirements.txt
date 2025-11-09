@@ -1,0 +1,14 @@
+langgraph
+langchain
+langchain-openai
+langchain-qdrant
+qdrant-client
+python-dotenv
+langchain-community
+fastapi
+uvicorn
+pypdf
+python-docx
+python-magic-bin
+unstructured
+langsmith
