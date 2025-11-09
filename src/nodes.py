@@ -1,9 +1,8 @@
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 from langsmith import traceable
-from langsmith.wrappers import wrap_openai
 from src.state import State
 from src.vectorstore import search_documents
+from src.agent_init import get_llm
 import os
 
 
@@ -20,9 +19,7 @@ def retrieve_documents(state: State) -> dict:
     return {"retrieved_docs": retrieved_docs}
 
 
-@traceable(
-    name="generate_answer", metadata={"model": os.getenv("MODEL_NAME", "unknown")}
-)
+@traceable(name="generate_answer", metadata={"model": os.getenv("MODEL_NAME")})
 def generate_answer(state: State) -> dict:
     """Generate answer using retrieved documents and LLM."""
 
@@ -30,12 +27,7 @@ def generate_answer(state: State) -> dict:
     retrieved_docs = state.get("retrieved_docs", [])
 
     # Initialize LLM with OpenRouter
-    llm = ChatOpenAI(
-        model=os.getenv("MODEL_NAME"),
-        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-        openai_api_base=os.getenv("OPENROUTER_BASE_URL"),
-        temperature=0.1,
-    )
+    llm = get_llm()
 
     # Format context from retrieved documents
     context = "\n\n".join(

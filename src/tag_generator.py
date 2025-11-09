@@ -1,9 +1,7 @@
 """Generate tags for document chunks using LLM."""
 
-import os
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-import json
+from src.agent_init import get_llm
 
 
 def generate_tags(text: str) -> list[str]:
@@ -17,12 +15,7 @@ def generate_tags(text: str) -> list[str]:
         List of 3 tags
     """
     # Initialize LLM with OpenRouter
-    llm = ChatOpenAI(
-        model=os.getenv("MODEL_NAME"),
-        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-        openai_api_base=os.getenv("OPENROUTER_BASE_URL"),
-        temperature=0.1,
-    )
+    llm = get_llm()
 
     # Create prompt
     messages = [

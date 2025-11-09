@@ -132,7 +132,7 @@ def ingest_documents(directory_path: str = "data"):
     count = add_documents_to_qdrant(all_documents)
 
     print(f"\n✓ Successfully ingested {count} document chunks into Qdrant")
-    print(f"  Collection: {os.getenv('QDRANT_COLLECTION_NAME', 'rag')}")
+    print(f"  Collection: {os.getenv('QDRANT_COLLECTION_NAME')}")
 
 
 if __name__ == "__main__":

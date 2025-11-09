@@ -12,11 +12,12 @@ A Retrieval-Augmented Generation (RAG) application built with LangGraph, Qdrant 
 
 ## Architecture
 
-This application follows the LangGraph application structure with:
-- **State management**: Tracks query, retrieved documents, and generated answers
-- **Retrieval node**: Fetches relevant documents from Qdrant
-- **Generation node**: Uses LLM to generate answers based on context
-- **Vector store**: Qdrant for efficient similarity search
+This application uses an **agent-based architecture** with LangGraph:
+- **Agent with Tools**: LLM agent that can use multiple tools to answer queries
+- **RAG Tool**: Searches knowledge base and retrieves relevant documents
+- **Extensible Tool System**: Easy to add new tools (calculator, web search, etc.)
+- **Vector Store**: Qdrant for efficient similarity search with custom schema
+- **LLM-Generated Tags**: Automatic tagging of document chunks for better organization
 - **Observability**: LangSmith tracing on all operations
 
 ## Setup
@@ -72,11 +73,14 @@ The UI will be available at `http://localhost:3000`
 │   └── ingest_documents.py # Document ingestion script
 ├── src/
 │   ├── __init__.py
-│   ├── graph.py            # Graph definition
-│   ├── state.py            # State schema
-│   ├── nodes.py            # Node implementations
+│   ├── agent_graph.py      # Agent graph with tool calling
+│   ├── agent_state.py      # Agent state schema
 │   ├── vectorstore.py      # Qdrant setup
-│   └── tag_generator.py    # LLM tag generation
+│   ├── tag_generator.py    # LLM tag generation
+│   └── tools/              # Agent tools
+│       ├── __init__.py
+│       ├── rag_tool.py     # RAG knowledge base tool
+│       └── example_tool.py # Template for new tools
 └── fe/                     # Frontend (Next.js)
     ├── app/                # Next.js app directory
     ├── components/         # React components

@@ -12,3 +12,6 @@ python-docx
 python-magic-bin
 unstructured
 langsmith
+openai
+langgraph-cli[inmem]
+requests

@@ -3,7 +3,7 @@
         "."
     ],
     "graphs": {
-        "rag_agent": "./src/graph.py:graph"
+        "Chat-LG": "./src/agent_graph.py:agent_graph"
     },
     "env": ".env"
 }
