@@ -20,6 +20,48 @@ This application uses an **agent-based architecture** with LangGraph:
 - **LLM-Generated Tags**: Automatic tagging of document chunks for better organization
 - **Observability**: LangSmith tracing on all operations
 
+```mermaid
+graph TB
+    User[User Query] --> FastAPI[FastAPI Server]
+    FastAPI --> Agent[LangGraph Agent]
+    
+    Agent --> ToolRouter{Tool Selection}
+    
+    ToolRouter --> RAGTool[RAG Tool]
+    ToolRouter --> StockTool[Stock Tool]
+    ToolRouter --> OtherTools[Other Tools...]
+    
+    RAGTool --> Qdrant[(Qdrant Vector DB)]
+    Qdrant --> Embeddings[OpenAI Embeddings<br/>text-embedding-3-large]
+    
+    RAGTool --> Context[Retrieved Context]
+    StockTool --> StockData[Stock Data]
+    OtherTools --> ToolResults[Tool Results]
+    
+    Context --> LLM[OpenRouter LLM]
+    StockData --> LLM
+    ToolResults --> LLM
+    
+    LLM --> Response[Generated Response]
+    Response --> FastAPI
+    FastAPI --> User
+    
+    Agent -.-> LangSmith[LangSmith Tracing]
+    RAGTool -.-> LangSmith
+    LLM -.-> LangSmith
+    
+    Docs[Documents<br/>PDF/DOCX/MD/TXT] --> Ingestion[Ingestion Script]
+    Ingestion --> TagGen[LLM Tag Generator]
+    TagGen --> Chunks[Document Chunks + Tags]
+    Chunks --> Qdrant
+    
+    style Agent fill:#e1f5ff
+    style Qdrant fill:#fff4e1
+    style LLM fill:#ffe1f5
+    style LangSmith fill:#e1ffe1
+    style FastAPI fill:#f0e1ff
+```
+
 ## Setup
 
 1. Install dependencies:

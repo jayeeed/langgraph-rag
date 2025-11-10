@@ -1,73 +1,129 @@
-"""Stock information tool using Alpha Vantage API."""
+"""Stock market data tool using Alpha Vantage API."""
 
 import os
 import requests
+from typing import Literal, Optional
 from langchain_core.tools import tool
 
 
 @tool
-def stock_info(symbol: str) -> str:
+def stock_info(
+    symbol: str,
+    function: Literal[
+        "TIME_SERIES_INTRADAY",
+        "TIME_SERIES_DAILY",
+        "TIME_SERIES_DAILY_ADJUSTED",
+        "TIME_SERIES_WEEKLY",
+        "TIME_SERIES_WEEKLY_ADJUSTED",
+        "TIME_SERIES_MONTHLY",
+        "TIME_SERIES_MONTHLY_ADJUSTED",
+        "GLOBAL_QUOTE",
+    ] = "TIME_SERIES_DAILY",
+    interval: Optional[Literal["1min", "5min", "15min", "30min", "60min"]] = None,
+    outputsize: Literal["compact", "full"] = "compact",
+) -> str:
     """
-    Get real-time stock information and intraday prices for a given stock symbol.
+    Get stock market data from Alpha Vantage API.
 
-    Use this tool when users ask about stock prices, stock market data, or company stock information.
+    Use this tool to get stock prices, trading volumes, and historical data for any global equity.
 
     Args:
-        symbol: The stock ticker symbol (e.g., "IBM", "AAPL", "GOOGL", "MSFT")
+        symbol: Stock ticker symbol (e.g., 'IBM', 'AAPL', 'TSCO.LON')
+        function: Type of data - GLOBAL_QUOTE for latest price, TIME_SERIES_DAILY for daily data,
+                  TIME_SERIES_INTRADAY for minute-level data, etc.
+        interval: Required for intraday data - '1min', '5min', '15min', '30min', or '60min'
+        outputsize: 'compact' for latest 100 points or 'full' for complete history (20+ years)
 
     Returns:
-        Current stock price information and recent intraday data
+        Formatted stock data including prices, volumes, and changes
     """
     api_key = os.getenv("STOCK_API_KEY")
 
     if not api_key:
-        return "Error: STOCK_API_KEY not configured. Please add your Alpha Vantage API key to the .env file."
+        return "Error: STOCK_API_KEY environment variable not set"
 
-    # Get intraday time series data
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval=5min&apikey={api_key}"
+    # Build parameters
+    params = {
+        "function": function,
+        "symbol": symbol,
+        "apikey": api_key,
+        "datatype": "json",
+    }
+
+    # Add function-specific parameters
+    if function == "TIME_SERIES_INTRADAY":
+        if not interval:
+            return "Error: interval is required for intraday data (1min, 5min, 15min, 30min, or 60min)"
+        params["interval"] = interval
+        params["outputsize"] = outputsize
+    elif function != "GLOBAL_QUOTE":
+        params["outputsize"] = outputsize
 
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(
+            "https://www.alphavantage.co/query", params=params, timeout=30
+        )
         response.raise_for_status()
         data = response.json()
 
-        # Check for API errors
+        # Check for errors
         if "Error Message" in data:
-            return f"Error: Invalid stock symbol '{symbol}'. Please check the ticker symbol and try again."
-
+            return f"Error: {data['Error Message']}"
         if "Note" in data:
-            return "Error: API rate limit reached. Please try again later or upgrade your Alpha Vantage API key."
+            return f"API Limit: {data['Note']}"
 
-        if "Time Series (5min)" not in data:
-            return f"Error: Unable to fetch data for symbol '{symbol}'. Please verify the symbol is correct."
+        # Format response
+        return _format_stock_data(data, function)
 
-        # Extract metadata and latest data point
-        metadata = data.get("Meta Data", {})
-        time_series = data["Time Series (5min)"]
+    except requests.exceptions.RequestException as e:
+        return f"API Request Error: {str(e)}"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
-        # Get the most recent timestamp
-        latest_timestamp = sorted(time_series.keys(), reverse=True)[0]
-        latest_data = time_series[latest_timestamp]
 
-        # Format the response
-        result = f"""Stock Information for {symbol}:
+def _format_stock_data(data: dict, function: str) -> str:
+    """Format stock data for readability."""
+    # Find the data keys
+    meta_key = next((k for k in data.keys() if "Meta Data" in k), None)
+    ts_key = next(
+        (k for k in data.keys() if "Time Series" in k or "Global Quote" in k), None
+    )
 
-Last Updated: {latest_timestamp}
-Open: ${float(latest_data['1. open']):.2f}
-High: ${float(latest_data['2. high']):.2f}
-Low: ${float(latest_data['3. low']):.2f}
-Close: ${float(latest_data['4. close']):.2f}
-Volume: {int(latest_data['5. volume']):,}
+    if not ts_key:
+        return str(data)
 
-Data Source: Alpha Vantage (5-minute intervals)
-Last Refreshed: {metadata.get('3. Last Refreshed', 'N/A')}
-"""
+    time_series = data[ts_key]
 
+    # Format quote data
+    if function == "GLOBAL_QUOTE":
+        result = f"**{time_series.get('01. symbol', 'N/A')} Stock Quote**\n\n"
+        result += f"Price: ${time_series.get('05. price', 'N/A')}\n"
+        result += f"Change: {time_series.get('09. change', 'N/A')} ({time_series.get('10. change percent', 'N/A')})\n"
+        result += f"Open: ${time_series.get('02. open', 'N/A')}\n"
+        result += f"High: ${time_series.get('03. high', 'N/A')}\n"
+        result += f"Low: ${time_series.get('04. low', 'N/A')}\n"
+        result += f"Volume: {time_series.get('06. volume', 'N/A')}\n"
+        result += f"Previous Close: ${time_series.get('08. previous close', 'N/A')}\n"
+        result += (
+            f"Latest Trading Day: {time_series.get('07. latest trading day', 'N/A')}"
+        )
         return result
 
-    except requests.exceptions.Timeout:
-        return "Error: Request timed out. Please try again."
-    except requests.exceptions.RequestException as e:
-        return f"Error fetching stock data: {str(e)}"
-    except Exception as e:
-        return f"Error processing stock data: {str(e)}"
+    # Format time series data
+    metadata = data.get(meta_key, {})
+    result = f"**{metadata.get('2. Symbol', 'N/A')} Stock Data**\n\n"
+    result += f"Last Refreshed: {metadata.get('3. Last Refreshed', 'N/A')}\n\n"
+
+    # Show latest 5 data points
+    items = list(time_series.items())[:5]
+    result += "Latest Data:\n"
+    for timestamp, values in items:
+        result += f"\n{timestamp}:\n"
+        for key, value in values.items():
+            clean_key = key.split(". ", 1)[-1] if ". " in key else key
+            result += f"  {clean_key}: {value}\n"
+
+    if len(time_series) > 5:
+        result += f"\n... and {len(time_series) - 5} more data points available"
+
+    return result

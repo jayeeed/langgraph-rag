@@ -9,4 +9,4 @@ ALL_TOOLS = [
     stock_info,
 ]
 
-__all__ = ["ALL_TOOLS", "search_knowledge_base", "stock_info"]
+__all__ = ["ALL_TOOLS"]
